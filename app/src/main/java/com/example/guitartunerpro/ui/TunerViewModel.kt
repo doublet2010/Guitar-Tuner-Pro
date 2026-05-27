@@ -8,7 +8,6 @@ import com.example.guitartunerpro.model.Instruments
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 class TunerViewModel : ViewModel() {
     private val pitchDetector = PitchDetector()
@@ -16,7 +15,7 @@ class TunerViewModel : ViewModel() {
     private val _currentFrequency = MutableStateFlow(0f)
     val currentFrequency: StateFlow<Float> = _currentFrequency
     
-    private val _selectedInstrument = MutableStateFlow(Instruments.GUITAR)
+    private val _selectedInstrument = MutableStateFlow(Instruments.GUITAR_STANDARD)
     val selectedInstrument: StateFlow<Instrument> = _selectedInstrument
 
     init {
@@ -29,5 +28,9 @@ class TunerViewModel : ViewModel() {
                 _currentFrequency.value = frequency
             }
         }
+    }
+
+    fun selectInstrument(instrument: Instrument) {
+        _selectedInstrument.value = instrument
     }
 }
