@@ -1,14 +1,18 @@
 [
     {
-        "merged": "com.example.guitartunerpro.app-merged_res-45:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "com.example.guitartunerpro.app-main-47:/mipmap-anydpi-v26/ic_launcher_round.xml"
-    },
-    {
         "merged": "com.example.guitartunerpro.app-merged_res-45:/drawable_ic_launcher_foreground.xml.flat",
         "source": "com.example.guitartunerpro.app-main-47:/drawable/ic_launcher_foreground.xml"
     },
     {
-        "merged": "com.example.guitartunerpro.app-merged_res-45:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "com.example.guitartunerpro.app-main-47:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "/Users/macbookpro/.gradle/daemon/8.0/com.example.guitartunerpro.app-merged_res-45:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "/Users/macbookpro/.gradle/daemon/8.0/com.example.guitartunerpro.app-main-47:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "/Users/macbookpro/.gradle/daemon/8.0/com.example.guitartunerpro.app-merged_res-45:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "/Users/macbookpro/.gradle/daemon/8.0/com.example.guitartunerpro.app-main-47:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "/Users/macbookpro/.gradle/daemon/8.0/com.example.guitartunerpro.app-merged_res-45:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "/Users/macbookpro/.gradle/daemon/8.0/com.example.guitartunerpro.app-main-47:/drawable/ic_launcher_foreground.xml"
     }
 ]
