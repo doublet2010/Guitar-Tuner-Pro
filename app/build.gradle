@@ -12,11 +12,30 @@ android {
         minSdk 31
         targetSdk 34
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary true
+        }
+    }
+
+    flavorDimensions "edition"
+    productFlavors {
+        full {
+            dimension "edition"
+            applicationIdSuffix ".full"
+            versionNameSuffix "-full"
+        }
+        guitar {
+            dimension "edition"
+            applicationIdSuffix ".guitar"
+            versionNameSuffix "-guitar"
+        }
+        bass {
+            dimension "edition"
+            applicationIdSuffix ".bass"
+            versionNameSuffix "-bass"
         }
     }
 
