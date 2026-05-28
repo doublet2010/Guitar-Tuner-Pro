@@ -10,14 +10,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.guitartunerpro.model.Instrument
+import com.example.guitartunerpro.model.InstrumentString
 import com.example.guitartunerpro.model.Instruments
+import com.example.guitartunerpro.model.PegSide
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.*
@@ -89,42 +94,107 @@ fun TunerScreen(viewModel: TunerViewModel) {
 
 @Composable
 fun TunerContent(frequency: Float, instrument: Instrument) {
-    val closestString = instrument.strings.minByOrNull { abs(it.frequency - frequency) }
+    val closestString = if (frequency > 0) instrument.strings.minByOrNull { abs(it.frequency - frequency) } else null
+    val diffCents = if (frequency > 0 && closestString != null) {
+        1200 * log2(frequency / closestString.frequency).toFloat()
+    } else {
+        0f
+    }
     
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = instrument.name,
-            fontSize = 24.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
         
-        Spacer(modifier = Modifier.height(32.dp))
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            InstrumentHeadstock(instrument, closestString, diffCents)
+        }
         
         closestString?.let {
             Text(
                 text = it.note,
-                fontSize = 64.sp,
+                fontSize = 48.sp,
                 fontWeight = FontWeight.ExtraBold
             )
-            
-            val diff = if (frequency > 0) {
-                // Calculate cents difference
-                1200 * log2(frequency / it.frequency).toFloat()
-            } else {
-                0f
-            }
-            
-            TunerGauge(diff)
-            
+            TunerGauge(diffCents)
             Text(
                 text = String.format(Locale.getDefault(), "%.1f Hz", frequency),
                 fontSize = 18.sp
             )
+        } ?: run {
+            Text("Pluck a string", fontSize = 24.sp, color = Color.Gray)
         }
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun InstrumentHeadstock(instrument: Instrument, activeString: InstrumentString?, diffCents: Float) {
+    Canvas(modifier = Modifier.size(200.dp, 300.dp)) {
+        val width = size.width
+        val height = size.height
+        
+        // Headstock body
+        val bodyPath = Path().apply {
+            moveTo(width * 0.3f, height * 0.1f)
+            lineTo(width * 0.7f, height * 0.1f)
+            lineTo(width * 0.8f, height * 0.9f)
+            lineTo(width * 0.2f, height * 0.9f)
+            close()
+        }
+        drawPath(path = bodyPath, color = Color(0xFF424242))
+        
+        // Group strings by side
+        val leftStrings = instrument.strings.filter { it.pegSide == PegSide.LEFT }.sortedBy { it.pegIndex }
+        val rightStrings = instrument.strings.filter { it.pegSide == PegSide.RIGHT }.sortedBy { it.pegIndex }
+        
+        fun drawPegs(strings: List<InstrumentString>, xPos: Float, side: PegSide) {
+            val count = strings.size
+            if (count == 0) return
+            
+            val startY = height * 0.2f
+            val endY = height * 0.8f
+            val stepY = if (count > 1) (endY - startY) / (count - 1) else 0f
+            
+            strings.forEachIndexed { index, string ->
+                val py = startY + index * stepY
+                val isActive = string == activeString
+                val pegColor = if (isActive) {
+                    if (abs(diffCents) < 5) Color.Green else Color.Red
+                } else {
+                    Color(0xFF757575)
+                }
+                
+                // Draw tuning ear
+                val earWidth = 20.dp.toPx()
+                val earHeight = 10.dp.toPx()
+                val earX = if (side == PegSide.LEFT) xPos - earWidth else xPos
+                
+                drawRoundRect(
+                    color = pegColor,
+                    topLeft = Offset(earX, py - earHeight / 2),
+                    size = Size(earWidth, earHeight),
+                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                )
+                
+                // Draw peg post
+                drawCircle(
+                    color = pegColor,
+                    radius = 5.dp.toPx(),
+                    center = Offset(xPos, py)
+                )
+            }
+        }
+        
+        drawPegs(leftStrings, width * 0.35f, PegSide.LEFT)
+        drawPegs(rightStrings, width * 0.65f, PegSide.RIGHT)
     }
 }
 
@@ -133,8 +203,8 @@ fun TunerGauge(diffCents: Float) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)
-            .padding(16.dp),
+            .height(120.dp)
+            .padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -153,7 +223,7 @@ fun TunerGauge(diffCents: Float) {
             drawLine(
                 color = Color.Green,
                 start = Offset(size.width / 2, size.height),
-                end = Offset(size.width / 2, size.height - 40.dp.toPx()),
+                end = Offset(size.width / 2, size.height - 30.dp.toPx()),
                 strokeWidth = 4.dp.toPx(),
                 cap = StrokeCap.Round
             )
