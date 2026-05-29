@@ -24,6 +24,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -257,6 +260,9 @@ fun TunerContent(
     manualString: InstrumentString?,
     onStringClick: (InstrumentString) -> Unit
 ) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     val activeString = if (isAutoMode) {
         if (frequency > 0) instrument.strings.minByOrNull { abs(it.frequency - frequency) } else null
     } else {
@@ -269,47 +275,93 @@ fun TunerContent(
         0f
     }
     
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = instrument.name,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Box(
-            modifier = Modifier
-                .weight(0.75f)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
+    if (isLandscape) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            InstrumentHeadstock(
-                instrument = instrument,
-                activeString = activeString,
-                diffCents = diffCents,
-                onStringClick = onStringClick
-            )
+            Box(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                InstrumentHeadstock(
+                    instrument = instrument,
+                    activeString = activeString,
+                    diffCents = diffCents,
+                    onStringClick = onStringClick
+                )
+            }
+            
+            Column(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = instrument.name,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                activeString?.let {
+                    Text(
+                        text = it.note,
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    TunerGauge(diffCents, modifier = Modifier.height(120.dp))
+                    Text(
+                        text = String.format(Locale.getDefault(), "%.1f Hz", frequency),
+                        fontSize = 16.sp
+                    )
+                } ?: run {
+                    Text("Pluck a string", fontSize = 20.sp, color = Color.Gray)
+                }
+            }
         }
-        
-        activeString?.let {
+    } else {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = it.note,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.ExtraBold
+                text = instrument.name,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
             )
-            TunerGauge(diffCents, modifier = Modifier.height(160.dp))
-            Text(
-                text = String.format(Locale.getDefault(), "%.1f Hz", frequency),
-                fontSize = 18.sp
-            )
-        } ?: run {
-            Text("Pluck a string", fontSize = 24.sp, color = Color.Gray)
+            
+            Box(
+                modifier = Modifier
+                    .weight(0.75f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                InstrumentHeadstock(
+                    instrument = instrument,
+                    activeString = activeString,
+                    diffCents = diffCents,
+                    onStringClick = onStringClick
+                )
+            }
+            
+            activeString?.let {
+                Text(
+                    text = it.note,
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                TunerGauge(diffCents, modifier = Modifier.height(160.dp))
+                Text(
+                    text = String.format(Locale.getDefault(), "%.1f Hz", frequency),
+                    fontSize = 18.sp
+                )
+            } ?: run {
+                Text("Pluck a string", fontSize = 24.sp, color = Color.Gray)
+            }
+            Spacer(modifier = Modifier.height(32.dp))
         }
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -363,7 +415,7 @@ fun InstrumentHeadstock(
             size = Size(width * 0.56f, 6.dp.toPx())
         )
         
-        fun drawPegsAndStrings(strings: List<InstrumentString>, xPos: Float, side: PegSide) {
+        fun drawPegsAndStrings(strings: List<InstrumentString>, side: PegSide) {
             val count = strings.size
             if (count == 0) return
             
@@ -373,6 +425,14 @@ fun InstrumentHeadstock(
             
             strings.sortedBy { it.pegIndex }.forEachIndexed { index, string ->
                 val py = if (count > 1) startY + index * stepY else (startY + endY) / 2
+                
+                // Align peg x position with the trapezoid edge
+                // Trapezoid width goes from 0.35->0.65 at top to 0.25->0.75 at bottom (y=0.85)
+                // Normalize py to the trapezoid height range (0.05 to 0.85)
+                val t = ((py / height) - 0.05f) / 0.8f
+                val edgeFactor = 0.35f + t * (0.25f - 0.35f)
+                val xPos = if (side == PegSide.LEFT) width * edgeFactor else width * (1f - edgeFactor)
+
                 val isActive = string == activeString
                 val pegColor = if (isActive) {
                     if (abs(diffCents) < 5) Color.Green else Color.Red
@@ -385,11 +445,15 @@ fun InstrumentHeadstock(
                 val earHeight = 14.dp.toPx()
                 val earX = if (side == PegSide.LEFT) xPos - earWidth - 4.dp.toPx() else xPos + 4.dp.toPx()
                 
+                // Dynamic hit area: expansion limited by stepY to avoid overlapping neighboring pegs
+                val yExpansion = if (stepY > 0) (stepY * 0.4f).coerceAtMost(10.dp.toPx()) else 10.dp.toPx()
+                val xExpansion = 15.dp.toPx()
+
                 pegBounds[string] = RectData(
-                    left = earX - 10f,
-                    top = py - earHeight / 2 - 10f,
-                    right = earX + earWidth + 10f,
-                    bottom = py + earHeight / 2 + 10f
+                    left = earX - xExpansion,
+                    top = py - earHeight / 2 - yExpansion,
+                    right = earX + earWidth + xExpansion,
+                    bottom = py + earHeight / 2 + yExpansion
                 )
 
                 drawRoundRect(
@@ -413,9 +477,7 @@ fun InstrumentHeadstock(
                 val totalStrings = instrument.strings.size
                 val stringSpacing = nutWidth / (totalStrings + 1)
                 
-                // Logic to avoid crossing: 
-                // Left side: top peg goes to inner nut slot, bottom peg goes to outer nut slot.
-                // Right side: top peg goes to inner nut slot, bottom peg goes to outer nut slot.
+                // Logic to avoid crossing
                 val totalLeft = leftStrings.size
                 val globalNutIndex = if (side == PegSide.LEFT) {
                     (totalLeft - 1) - index
@@ -442,8 +504,8 @@ fun InstrumentHeadstock(
             }
         }
         
-        drawPegsAndStrings(leftStrings, width * 0.38f, PegSide.LEFT)
-        drawPegsAndStrings(rightStrings, width * 0.62f, PegSide.RIGHT)
+        drawPegsAndStrings(leftStrings, PegSide.LEFT)
+        drawPegsAndStrings(rightStrings, PegSide.RIGHT)
     }
 }
 
